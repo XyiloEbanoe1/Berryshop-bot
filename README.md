@@ -1,1 +1,0 @@
-# Berryshop-bot
