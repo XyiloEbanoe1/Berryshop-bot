@@ -264,7 +264,7 @@ async def main():
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
     print(f"🌍 WebApp: {REPLIT_URL}/web")
-    print("🤖 Бот запущен. Ожидание сообщений...")
+    print("🤖 берри ботик запушен")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
