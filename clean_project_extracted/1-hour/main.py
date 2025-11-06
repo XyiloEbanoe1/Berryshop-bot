@@ -131,12 +131,12 @@ def build_admin_list_kb():
 
 def build_actions_kb():
     kb = InlineKeyboardBuilder()
-    kb.button(text="✏️ Название", callback_data="act_name")
-    kb.button(text="💰 Цена", callback_data="act_price")
-    kb.button(text="📝 Описание", callback_data="act_desc")
-    kb.button(text="📷 Фото", callback_data="act_photo")
-    kb.button(text="🗑 Удалить", callback_data="act_del")
-    kb.button(text="↩ Назад", callback_data="act_back")
+    kb.button(text="✏️ название", callback_data="act_name")
+    kb.button(text="💰 цена", callback_data="act_price")
+    kb.button(text="📝 описание", callback_data="act_desc")
+    kb.button(text="📷 фото", callback_data="act_photo")
+    kb.button(text="🗑 удалить", callback_data="act_del")
+    kb.button(text="↩ назад", callback_data="act_back")
     kb.adjust(2)
     return kb.as_markup()
 
@@ -149,7 +149,7 @@ async def cmd_start(msg: types.Message):
         keyboard=[[types.KeyboardButton(text="🛍 Открыть магазин", web_app=types.WebAppInfo(url=f"{REPLIT_URL}/web"))]],
         resize_keyboard=True
     )
-    await msg.answer("Добро пожаловать 🌿", reply_markup=kb)
+    await msg.answer("Добро пожаловать, тебе повезло, с чем же? У нас шишки можно не только курить но и кушать 🌿", reply_markup=kb)
 
 @dp.message(Command("admin"))
 async def cmd_admin(msg: types.Message):
@@ -195,13 +195,13 @@ async def handle_text(msg: types.Message):
         pid = st["pid"]
         update_product_field(pid, "price", price)
         set_admin_state(msg.from_user.id, "mode", "new_desc")
-        await msg.answer("Введите описание:")
+        await msg.answer("описание:")
     elif mode == "new_desc":
         desc = msg.text.strip()
         pid = st["pid"]
         update_product_field(pid, "description", desc)
         set_admin_state(msg.from_user.id, "mode", "new_photo")
-        await msg.answer("Теперь отправь фото товара 📷")
+        await msg.answer("отправь фото")
     else:
         return
 
@@ -223,7 +223,7 @@ async def save_photo(msg: types.Message):
     update_product_field(pid, "image", f"{pid}.jpg")
     refresh_web_data()
     clear_admin(msg.from_user.id)
-    await msg.answer("✅ Товар успешно добавлен и сохранён!")
+    await msg.answer("✅ Добавлено и сохранёно!")
 
 # --------------------------------
 # AIOHTTP web
