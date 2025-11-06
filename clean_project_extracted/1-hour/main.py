@@ -154,9 +154,9 @@ async def cmd_start(msg: types.Message):
 @dp.message(Command("admin"))
 async def cmd_admin(msg: types.Message):
     if msg.from_user.id not in ADMIN_IDS:
-        await msg.reply("⛔ Доступ запрещён.")
+        await msg.reply("⛔ отказано")
         return
-    await msg.answer("Панель администратора:", reply_markup=build_admin_list_kb())
+    await msg.answer("Админ панель", reply_markup=build_admin_list_kb())
 
 # --------------------------------
 # Callback-и
