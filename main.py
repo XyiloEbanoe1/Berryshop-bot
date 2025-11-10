@@ -15,7 +15,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 PORT = int(os.getenv("PORT", 8081))
-REPLIT_URL = os.getenv("REPLIT_URL", f"http://0.0.0.0:{PORT}")
+RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", f"http://0.0.0.0:{PORT}")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -23,14 +23,11 @@ dp = Dispatcher()
 # --------------------------------
 # Пути и база данных
 # --------------------------------
-# Корневой каталог относительно этого файла — чтобы приложение видел файлы
-# независимо от текущей рабочей директории (CWD)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web")
 IMAGES_DIR = os.path.join(WEB_DIR, "images")
 DB_FILE = os.path.join(BASE_DIR, "shop.db")
 DATA_JSON = os.path.join(WEB_DIR, "data.json")
-# Создаём директорию для изображений, если её ещё нет
 os.makedirs(IMAGES_DIR, exist_ok=True)
 
 def get_conn():
@@ -86,7 +83,6 @@ def delete_product(pid):
     conn.close()
 
 def refresh_web_data():
-    """Обновляем JSON-файл для сайта"""
     rows = get_all_products()
     out = []
     for r in rows:
@@ -146,17 +142,17 @@ def build_actions_kb():
 @dp.message(Command("start"))
 async def cmd_start(msg: types.Message):
     kb = types.ReplyKeyboardMarkup(
-        keyboard=[[types.KeyboardButton(text="🛍 Открыть магазин", web_app=types.WebAppInfo(url=f"{REPLIT_URL}/web"))]],
+        keyboard=[[types.KeyboardButton(text="🛍 Открыть магазин", web_app=types.WebAppInfo(url=f"{RENDER_EXTERNAL_URL}/web"))]],
         resize_keyboard=True
     )
-    await msg.answer("Добро пожаловать, тебе повезло, с чем же? У нас шишки можно не только курить но и кушать 🌿", reply_markup=kb)
+    await msg.answer("Добро пожаловать! 🌿 У нас шишки можно не только курить, но и кушать 😋", reply_markup=kb)
 
 @dp.message(Command("admin"))
 async def cmd_admin(msg: types.Message):
     if msg.from_user.id not in ADMIN_IDS:
-        await msg.reply("⛔ отказано")
+        await msg.reply("⛔ Доступ запрещён")
         return
-    await msg.answer("Админ панель", reply_markup=build_admin_list_kb())
+    await msg.answer("Админ панель:", reply_markup=build_admin_list_kb())
 
 # --------------------------------
 # Callback-и
@@ -185,7 +181,7 @@ async def handle_text(msg: types.Message):
         conn.close()
         set_admin_state(msg.from_user.id, "pid", pid)
         set_admin_state(msg.from_user.id, "mode", "new_price")
-        await msg.answer("Введите цену (руб):")
+        await msg.answer("Введите цену (в рублях):")
     elif mode == "new_price":
         try:
             price = int(msg.text.strip())
@@ -195,13 +191,13 @@ async def handle_text(msg: types.Message):
         pid = st["pid"]
         update_product_field(pid, "price", price)
         set_admin_state(msg.from_user.id, "mode", "new_desc")
-        await msg.answer("описание:")
+        await msg.answer("Введите описание:")
     elif mode == "new_desc":
         desc = msg.text.strip()
         pid = st["pid"]
         update_product_field(pid, "description", desc)
         set_admin_state(msg.from_user.id, "mode", "new_photo")
-        await msg.answer("отправь фото")
+        await msg.answer("Теперь отправьте фото товара:")
     else:
         return
 
@@ -223,17 +219,13 @@ async def save_photo(msg: types.Message):
     update_product_field(pid, "image", f"{pid}.jpg")
     refresh_web_data()
     clear_admin(msg.from_user.id)
-    await msg.answer("✅ Добавлено и сохранёно!")
+    await msg.answer("✅ Товар добавлен и сохранён!")
 
 # --------------------------------
 # AIOHTTP web
 # --------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-WEB_DIR = os.path.join(BASE_DIR, 'web')
-
 async def index(request):
     return web.FileResponse(os.path.join(WEB_DIR, 'index.html'))
-
 
 async def static_handler(request):
     path = request.match_info.get("path")
@@ -255,17 +247,28 @@ app.router.add_get("/web/{path:.+}", static_handler)
 app.router.add_get("/api/products", api_products)
 
 # --------------------------------
-# Запуск
+# Запуск с webhook
 # --------------------------------
 async def main():
     refresh_web_data()
+
+    # --- Новый блок: очистка старого webhook ---
+    await bot.delete_webhook(drop_pending_updates=True)
+    webhook_url = f"{RENDER_EXTERNAL_URL}/webhook/{BOT_TOKEN}"
+    await bot.set_webhook(webhook_url)
+    print(f"🤖 Webhook установлен: {webhook_url}")
+
+    # --- AIOHTTP сервер ---
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
-    print(f"🌍 WebApp: {REPLIT_URL}/web")
-    print("🤖 берри ботик запушен")
-    await dp.start_polling(bot)
+
+    print(f"🌐 WebApp доступен по адресу: {RENDER_EXTERNAL_URL}/web")
+    print("🍓 Ботик успешно запущен!")
+
+    # --- Ожидание завершения ---
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
     asyncio.run(main())
