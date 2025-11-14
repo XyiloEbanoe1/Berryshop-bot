@@ -1,7 +1,7 @@
 const products = [
   {
     id: 1,
-    name: "Клубника",
+    name: "Морошка",
     category: "berries",
     price: 350,
     img: "https://cdn-icons-png.flaticon.com/512/415/415733.png",
@@ -9,7 +9,7 @@ const products = [
   },
   {
     id: 2,
-    name: "Черника",
+    name: "Княженика",
     category: "berries",
     price: 420,
     img: "https://cdn-icons-png.flaticon.com/512/415/415747.png",
@@ -17,7 +17,7 @@ const products = [
   },
   {
     id: 3,
-    name: "Мёд липовый",
+    name: "Мёд акация",
     category: "honey",
     price: 600,
     img: "https://cdn-icons-png.flaticon.com/512/2909/2909762.png",
@@ -25,7 +25,7 @@ const products = [
   },
   {
     id: 4,
-    name: "Чай ягодный",
+    name: "Чай таёжный чёрный",
     category: "tea",
     price: 250,
     img: "https://cdn-icons-png.flaticon.com/512/590/590836.png",
