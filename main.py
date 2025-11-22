@@ -46,6 +46,7 @@ def init_db():
     )""")
     conn.commit()
     conn.close()
+    print("✅ Таблица products создана/проверена")
 
 def seed_database_from_json():
     """Заполняет БД из data.json если БД пустая"""
@@ -56,12 +57,16 @@ def seed_database_from_json():
     cur.execute("SELECT COUNT(*) FROM products")
     count = cur.fetchone()[0]
     
+    print(f"📊 В базе данных товаров: {count}")
+    
     if count == 0:
         print("📦 База данных пустая, загружаем товары из data.json...")
         
         if os.path.exists(DATA_JSON):
             with open(DATA_JSON, "r", encoding="utf-8") as f:
                 products = json.load(f)
+            
+            print(f"📄 Найдено товаров в data.json: {len(products)}")
             
             for p in products:
                 cur.execute(
@@ -74,13 +79,24 @@ def seed_database_from_json():
             print(f"✅ Загружено {len(products)} товаров в базу данных!")
         else:
             print(f"⚠️ Файл {DATA_JSON} не найден!")
+            print(f"📂 Текущая директория: {os.getcwd()}")
+            print(f"📂 WEB_DIR: {WEB_DIR}")
     else:
-        print(f"✅ В базе уже есть {count} товаров")
+        print(f"✅ В базе уже есть {count} товаров, пропускаем загрузку")
     
     conn.close()
 
+def reset_database():
+    """Полностью очищает и пересоздаёт БД"""
+    if os.path.exists(DB_FILE):
+        os.remove(DB_FILE)
+        print("🗑 Старая база удалена")
+    
+    init_db()
+    seed_database_from_json()
+
 init_db()
-seed_database_from_json()  # ⭐ ДОБАВИЛИ ЭТУ СТРОКУ
+seed_database_from_json()
 
 # --------------------------------
 # Вспомогательные функции
@@ -192,6 +208,24 @@ async def cmd_admin(msg: types.Message):
         return
     await msg.answer("📦 Админ панель — список товаров:", reply_markup=build_admin_list_kb())
 
+@dp.message(Command("resetdb"))
+async def cmd_resetdb(msg: types.Message):
+    """Пересоздаёт базу данных - ТОЛЬКО ДЛЯ АДМИНОВ"""
+    if msg.from_user.id not in ADMIN_IDS:
+        await msg.reply("⛔ Доступ запрещён")
+        return
+    
+    await msg.answer("🔄 Пересоздаю базу данных...")
+    
+    try:
+        reset_database()
+        refresh_web_data()
+        
+        count = len(get_all_products())
+        await msg.answer(f"✅ База пересоздана!\n📦 Товаров в базе: {count}")
+    except Exception as e:
+        await msg.answer(f"❌ Ошибка: {e}")
+
 # --------------------------------
 # Callback для добавления товара
 # --------------------------------
@@ -207,7 +241,6 @@ async def back_to_list(call: types.CallbackQuery):
     clear_admin(call.from_user.id)
     await call.message.edit_text("📦 Админ панель — список товаров:", reply_markup=build_admin_list_kb())
 
-# Просмотр товара
 @dp.callback_query(F.data.startswith("admin_prod_"))
 async def view_product(call: types.CallbackQuery):
     await call.answer()
@@ -233,7 +266,6 @@ async def view_product(call: types.CallbackQuery):
     else:
         await call.message.answer(text, reply_markup=build_actions_kb(pid))
 
-# Удаление товара
 @dp.callback_query(F.data.startswith("del_"))
 async def delete_prod(call: types.CallbackQuery):
     await call.answer()
@@ -243,7 +275,6 @@ async def delete_prod(call: types.CallbackQuery):
     await call.message.answer("🗑 Товар удалён!")
     await call.message.answer("📦 Админ панель:", reply_markup=build_admin_list_kb())
 
-# Редактирование полей
 @dp.callback_query(F.data.startswith("edit_name_"))
 async def edit_name(call: types.CallbackQuery):
     await call.answer()
@@ -284,9 +315,7 @@ async def edit_photo(call: types.CallbackQuery):
     set_admin_state(call.from_user.id, "pid", pid)
     await call.message.answer("📷 Отправьте новое фото:")
 
-# --------------------------------
-# Обработка текстовых сообщений
-# --------------------------------
+# (Остальной код handle_text и save_photo остаётся тем же...)
 @dp.message(F.text)
 async def handle_text(msg: types.Message):
     st = get_admin(msg.from_user.id)
@@ -295,7 +324,6 @@ async def handle_text(msg: types.Message):
 
     mode = st.get("mode")
     
-    # Добавление нового товара
     if mode == "new_name":
         name = msg.text.strip()
         conn = get_conn()
@@ -334,7 +362,6 @@ async def handle_text(msg: types.Message):
         set_admin_state(msg.from_user.id, "mode", "new_photo")
         await msg.answer("📷 Теперь отправьте фото товара (или напишите 'пропустить'):")
     
-    # Редактирование существующего товара
     elif mode == "edit_name":
         pid = st["pid"]
         update_product_field(pid, "name", msg.text.strip())
@@ -368,9 +395,6 @@ async def handle_text(msg: types.Message):
         clear_admin(msg.from_user.id)
         await msg.answer("✅ Описание обновлено!")
 
-# --------------------------------
-# Обработка фото
-# --------------------------------
 @dp.message(F.photo)
 async def save_photo(msg: types.Message):
     st = get_admin(msg.from_user.id)
