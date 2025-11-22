@@ -2,37 +2,81 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Магазин ягод</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Магазин северных ягод</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
-    <h1>Магазин ягод</h1>
+    <h1>🫐 Магазин северных ягод</h1>
     <nav>
-      <button class="nav-btn" onclick="showAll()">Все категории</button>
-      <button class="nav-btn" onclick="filterCategory('berries')">Варенье</button>
-      <button class="nav-btn" onclick="filterCategory('honey')">Мёд</button>
-      <button class="nav-btn" onclick="filterCategory('tea')">Чай</button>
+      <button class="nav-btn active" onclick="showAll()">Все</button>
+      <button class="nav-btn" onclick="filterCategory('Варенье')">🍓 Варенье</button>
+      <button class="nav-btn" onclick="filterCategory('Мёд')">🍯 Мёд</button>
+      <button class="nav-btn" onclick="filterCategory('Чай')">🍵 Чай</button>
     </nav>
   </header>
 
-  <main id="product-list"></main>
+  <main id="product-list">
+    <p style="text-align: center; color: #666; padding: 20px;">⏳ Загрузка товаров...</p>
+  </main>
 
   <footer>
-    <button class="footer-btn" onclick="openSupport()">Поддержка</button>
-    <button class="footer-btn" onclick="openCart()">Корзина</button>
-    <button class="footer-btn" onclick="openOrders()">Мои заказы</button>
+    <button class="footer-btn" onclick="openSupport()">💬</button>
+    <button class="footer-btn" onclick="openCart()">🧺</button>
+    <button class="footer-btn" onclick="openOrders()">📦</button>
   </footer>
 
+  <!-- Модальное окно -->
   <div id="product-modal" class="modal">
     <div class="modal-content">
       <span class="close" onclick="closeModal()">&times;</span>
       <h2 id="modal-title"></h2>
       <img id="modal-image" src="" alt="">
-      <p id="modal-price"></p>
-      <p id="modal-description"></p>
-      <button id="buy-btn">Добавить в корзину</button>
+      <p id="modal-price" style="font-size: 20px; font-weight: bold; color: #8bc34a; margin: 10px 0;"></p>
+      <p id="modal-description" style="text-align: left; line-height: 1.5; margin-top: 15px;"></p>
+      
+      <!-- Блок выбора веса -->
+      <div style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 8px;">
+        <label for="weight-input" style="display: block; margin-bottom: 8px; font-weight: bold; color: #555;">
+          ⚖️ Укажите вес (кг):
+        </label>
+        <input 
+          type="number" 
+          id="weight-input" 
+          min="0.1" 
+          max="100" 
+          step="0.1" 
+          value="1.0"
+          oninput="updateTotalPrice()"
+          style="
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            border: 2px solid #8bc34a;
+            border-radius: 6px;
+            text-align: center;
+            box-sizing: border-box;
+          ">
+        
+        <div style="margin-top: 12px; font-size: 24px; font-weight: bold; color: #8bc34a;">
+          Итого: <span id="total-price">0 ₽</span>
+        </div>
+      </div>
+      
+      <button id="buy-btn" onclick="addToCart()" style="
+        background: #8bc34a; 
+        color: white; 
+        border: none; 
+        padding: 14px 30px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-size: 16px;
+        font-weight: bold;
+        width: 100%;
+        transition: all 0.3s;
+      ">🛒 Добавить в корзину</button>
     </div>
   </div>
 
