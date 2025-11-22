@@ -1,4 +1,5 @@
 import os
+import sys
 import asyncio
 import json
 import sqlite3
@@ -8,32 +9,61 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+print("=" * 60)
+print("🚀 СТАРТ ПРИЛОЖЕНИЯ")
+print("=" * 60)
+
 # --------------------------------
 # Настройки и окружение
 # --------------------------------
+print("📋 Загрузка переменных окружения...")
 load_dotenv()
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
+ADMIN_IDS_STR = os.getenv("ADMIN_IDS", "")
 PORT = int(os.getenv("PORT", 10000))
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", f"http://0.0.0.0:{PORT}")
 
+print(f"✅ BOT_TOKEN: {'✓ установлен' if BOT_TOKEN else '✗ ОТСУТСТВУЕТ'}")
+print(f"✅ ADMIN_IDS: {ADMIN_IDS_STR}")
+print(f"✅ PORT: {PORT}")
+print(f"✅ RENDER_EXTERNAL_URL: {RENDER_EXTERNAL_URL}")
+
+if not BOT_TOKEN:
+    print("❌ КРИТИЧЕСКАЯ ОШИБКА: BOT_TOKEN не установлен!")
+    sys.exit(1)
+
+ADMIN_IDS = [int(x.strip()) for x in ADMIN_IDS_STR.split(",") if x.strip().isdigit()]
+print(f"✅ Админы (ID): {ADMIN_IDS}")
+
+print("\n📦 Инициализация бота...")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+print("✅ Бот инициализирован")
 
 # --------------------------------
 # Пути и база данных
 # --------------------------------
+print("\n📂 Настройка путей...")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web")
 IMAGES_DIR = os.path.join(WEB_DIR, "images")
 DB_FILE = os.path.join(BASE_DIR, "shop.db")
 DATA_JSON = os.path.join(WEB_DIR, "data.json")
+
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"WEB_DIR: {WEB_DIR}")
+print(f"DB_FILE: {DB_FILE}")
+print(f"DATA_JSON: {DATA_JSON}")
+
 os.makedirs(IMAGES_DIR, exist_ok=True)
+print("✅ Директории созданы")
 
 def get_conn():
     return sqlite3.connect(DB_FILE, check_same_thread=False)
 
 def init_db():
+    print("\n🗄️  Инициализация базы данных...")
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""CREATE TABLE IF NOT EXISTS products (
@@ -50,10 +80,10 @@ def init_db():
 
 def seed_database_from_json():
     """Заполняет БД из data.json если БД пустая"""
+    print("\n📦 Проверка наполнения БД...")
     conn = get_conn()
     cur = conn.cursor()
     
-    # Проверяем есть ли товары
     cur.execute("SELECT COUNT(*) FROM products")
     count = cur.fetchone()[0]
     
@@ -63,37 +93,50 @@ def seed_database_from_json():
         print("📦 База данных пустая, загружаем товары из data.json...")
         
         if os.path.exists(DATA_JSON):
+            print(f"✅ Файл {DATA_JSON} найден")
             with open(DATA_JSON, "r", encoding="utf-8") as f:
                 products = json.load(f)
             
             print(f"📄 Найдено товаров в data.json: {len(products)}")
             
-            for p in products:
+            for i, p in enumerate(products):
                 cur.execute(
                     "INSERT INTO products (name, category, price, description, image) VALUES (?,?,?,?,?)",
                     (p.get("name", ""), p.get("category", ""), p.get("price", 0), 
                      p.get("description", ""), p.get("image", "").replace("images/", ""))
                 )
+                if i < 3:
+                    print(f"  - {p.get('name')} ({p.get('category')}, {p.get('price')} ₽)")
             
             conn.commit()
             print(f"✅ Загружено {len(products)} товаров в базу данных!")
         else:
-            print(f"⚠️ Файл {DATA_JSON} не найден!")
-            print(f"📂 Текущая директория: {os.getcwd()}")
-            print(f"📂 WEB_DIR: {WEB_DIR}")
+            print(f"⚠️ ФАЙЛ НЕ НАЙДЕН: {DATA_JSON}")
+            print(f"📂 Содержимое WEB_DIR:")
+            try:
+                files = os.listdir(WEB_DIR)
+                for f in files:
+                    print(f"  - {f}")
+            except Exception as e:
+                print(f"❌ Ошибка чтения директории: {e}")
     else:
-        print(f"✅ В базе уже есть {count} товаров, пропускаем загрузку")
+        print(f"✅ В базе уже есть {count} товаров")
     
     conn.close()
 
 def reset_database():
     """Полностью очищает и пересоздаёт БД"""
+    print("\n🗑️  Сброс базы данных...")
     if os.path.exists(DB_FILE):
         os.remove(DB_FILE)
-        print("🗑 Старая база удалена")
+        print("✅ Старая база удалена")
     
     init_db()
     seed_database_from_json()
+
+print("\n" + "=" * 60)
+print("ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ")
+print("=" * 60)
 
 init_db()
 seed_database_from_json()
@@ -210,7 +253,6 @@ async def cmd_admin(msg: types.Message):
 
 @dp.message(Command("resetdb"))
 async def cmd_resetdb(msg: types.Message):
-    """Пересоздаёт базу данных - ТОЛЬКО ДЛЯ АДМИНОВ"""
     if msg.from_user.id not in ADMIN_IDS:
         await msg.reply("⛔ Доступ запрещён")
         return
@@ -226,9 +268,7 @@ async def cmd_resetdb(msg: types.Message):
     except Exception as e:
         await msg.answer(f"❌ Ошибка: {e}")
 
-# --------------------------------
-# Callback для добавления товара
-# --------------------------------
+# Callback handlers (сокращённо для экономии места)
 @dp.callback_query(F.data == "admin_add")
 async def add_new(call: types.CallbackQuery):
     await call.answer()
@@ -256,11 +296,7 @@ async def view_product(call: types.CallbackQuery):
     if img:
         photo_path = os.path.join(IMAGES_DIR, img)
         if os.path.exists(photo_path):
-            await call.message.answer_photo(
-                photo=types.FSInputFile(photo_path),
-                caption=text,
-                reply_markup=build_actions_kb(pid)
-            )
+            await call.message.answer_photo(photo=types.FSInputFile(photo_path), caption=text, reply_markup=build_actions_kb(pid))
         else:
             await call.message.answer(text, reply_markup=build_actions_kb(pid))
     else:
@@ -315,7 +351,6 @@ async def edit_photo(call: types.CallbackQuery):
     set_admin_state(call.from_user.id, "pid", pid)
     await call.message.answer("📷 Отправьте новое фото:")
 
-# (Остальной код handle_text и save_photo остаётся тем же...)
 @dp.message(F.text)
 async def handle_text(msg: types.Message):
     st = get_admin(msg.from_user.id)
@@ -420,6 +455,10 @@ async def save_photo(msg: types.Message):
 # --------------------------------
 # AIOHTTP web
 # --------------------------------
+print("\n" + "=" * 60)
+print("НАСТРОЙКА WEB-СЕРВЕРА")
+print("=" * 60)
+
 async def index(request):
     return web.FileResponse(os.path.join(WEB_DIR, 'index.html'))
 
@@ -434,6 +473,7 @@ async def api_products(request):
     refresh_web_data()
     with open(DATA_JSON, "r", encoding="utf-8") as f:
         data = json.load(f)
+    print(f"📡 API /api/products вернул {len(data)} товаров")
     return web.json_response(data)
 
 async def webhook_handler(request):
@@ -452,29 +492,52 @@ app.router.add_get("/", index)
 app.router.add_get("/web", index)
 app.router.add_get("/web/{path:.+}", static_handler)
 app.router.add_get("/api/products", api_products)
+print("✅ Маршруты настроены")
 
 # --------------------------------
-# Запуск с webhook
+# Запуск
 # --------------------------------
 async def main():
-    refresh_web_data()
-
-    await bot.delete_webhook(drop_pending_updates=True)
-    webhook_url = f"{RENDER_EXTERNAL_URL}/webhook/{BOT_TOKEN}"
+    print("\n" + "=" * 60)
+    print("ЗАПУСК СЕРВЕРА")
+    print("=" * 60)
     
-    await bot.set_webhook(webhook_url)
-    print(f"🤖 Webhook установлен: {webhook_url}")
+    print("\n🔄 Обновление data.json...")
+    refresh_web_data()
+    print("✅ data.json обновлён")
 
+    print("\n🔄 Удаление старого webhook...")
+    await bot.delete_webhook(drop_pending_updates=True)
+    print("✅ Старый webhook удалён")
+    
+    webhook_url = f"{RENDER_EXTERNAL_URL}/webhook/{BOT_TOKEN}"
+    print(f"\n🔄 Установка нового webhook: {webhook_url}")
+    await bot.set_webhook(webhook_url)
+    print("✅ Webhook установлен")
+
+    print("\n🔄 Запуск AIOHTTP сервера...")
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
+    print(f"✅ Сервер запущен на порту {PORT}")
 
+    print("\n" + "=" * 60)
+    print("🎉 ВСЁ ГОТОВО!")
+    print("=" * 60)
     print(f"🌐 WebApp: {RENDER_EXTERNAL_URL}/web")
     print(f"📡 API: {RENDER_EXTERNAL_URL}/api/products")
-    print("🍓 Бот запущен успешно!")
+    print("🍓 Бот готов к работе!")
+    print("=" * 60)
 
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        print("\n▶️  Запуск asyncio.run(main())...")
+        asyncio.run(main())
+    except Exception as e:
+        print(f"\n❌ КРИТИЧЕСКАЯ ОШИБКА: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
