@@ -47,7 +47,40 @@ def init_db():
     conn.commit()
     conn.close()
 
+def seed_database_from_json():
+    """Заполняет БД из data.json если БД пустая"""
+    conn = get_conn()
+    cur = conn.cursor()
+    
+    # Проверяем есть ли товары
+    cur.execute("SELECT COUNT(*) FROM products")
+    count = cur.fetchone()[0]
+    
+    if count == 0:
+        print("📦 База данных пустая, загружаем товары из data.json...")
+        
+        if os.path.exists(DATA_JSON):
+            with open(DATA_JSON, "r", encoding="utf-8") as f:
+                products = json.load(f)
+            
+            for p in products:
+                cur.execute(
+                    "INSERT INTO products (name, category, price, description, image) VALUES (?,?,?,?,?)",
+                    (p.get("name", ""), p.get("category", ""), p.get("price", 0), 
+                     p.get("description", ""), p.get("image", "").replace("images/", ""))
+                )
+            
+            conn.commit()
+            print(f"✅ Загружено {len(products)} товаров в базу данных!")
+        else:
+            print(f"⚠️ Файл {DATA_JSON} не найден!")
+    else:
+        print(f"✅ В базе уже есть {count} товаров")
+    
+    conn.close()
+
 init_db()
+seed_database_from_json()  # ⭐ ДОБАВИЛИ ЭТУ СТРОКУ
 
 # --------------------------------
 # Вспомогательные функции
@@ -379,7 +412,6 @@ async def api_products(request):
         data = json.load(f)
     return web.json_response(data)
 
-# ❗ КРИТИЧЕСКИ ВАЖНО: Обработчик webhook
 async def webhook_handler(request):
     try:
         update_dict = await request.json()
@@ -403,15 +435,12 @@ app.router.add_get("/api/products", api_products)
 async def main():
     refresh_web_data()
 
-    # Очистка старого webhook
     await bot.delete_webhook(drop_pending_updates=True)
     webhook_url = f"{RENDER_EXTERNAL_URL}/webhook/{BOT_TOKEN}"
     
-    # Установка webhook
     await bot.set_webhook(webhook_url)
     print(f"🤖 Webhook установлен: {webhook_url}")
 
-    # AIOHTTP сервер
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
@@ -421,7 +450,6 @@ async def main():
     print(f"📡 API: {RENDER_EXTERNAL_URL}/api/products")
     print("🍓 Бот запущен успешно!")
 
-    # Бесконечное ожидание
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
