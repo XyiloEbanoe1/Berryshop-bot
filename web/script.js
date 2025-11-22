@@ -1,5 +1,6 @@
 let products = [];
-let cart = {}; // Корзина: {productId: {product, weight}}
+let cart = {};
+let currentCategory = 'Все товары';
 
 // Загрузка данных из API
 async function loadProducts() {
@@ -14,12 +15,13 @@ async function loadProducts() {
   } catch (error) {
     console.error('❌ Ошибка загрузки:', error);
     document.getElementById('product-list').innerHTML = 
-      '<p style="color: red; text-align: center; padding: 20px;">Ошибка загрузки товаров. Проверьте соединение.</p>';
+      '<p style="color: #ff5555; text-align: center; padding: 20px; grid-column: 1/-1;">Ошибка загрузки товаров</p>';
   }
 }
 
 const productList = document.getElementById("product-list");
 const modal = document.getElementById("product-modal");
+const categoryTitle = document.getElementById("category-title");
 const modalTitle = document.getElementById("modal-title");
 const modalImage = document.getElementById("modal-image");
 const modalPrice = document.getElementById("modal-price");
@@ -27,6 +29,7 @@ const modalDesc = document.getElementById("modal-description");
 const weightInput = document.getElementById("weight-input");
 const totalPrice = document.getElementById("total-price");
 const buyBtn = document.getElementById("buy-btn");
+const cartBadge = document.getElementById("cart-badge");
 
 let currentProduct = null;
 
@@ -34,7 +37,7 @@ function displayProducts(items) {
   productList.innerHTML = "";
   
   if (items.length === 0) {
-    productList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">Товары не найдены 🤷‍♂️</p>';
+    productList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px; grid-column: 1/-1;">Товары не найдены 🤷‍♂️</p>';
     return;
   }
   
@@ -42,20 +45,22 @@ function displayProducts(items) {
     const card = document.createElement("div");
     card.className = "product";
     
-    // Используем изображение из базы или дефолтное по категории
     let imgSrc = p.image || getDefaultImage(p.category);
     
     card.innerHTML = `
-      <img src="${imgSrc}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/160x120?text=Нет+фото'">
-      <h3>${p.name}</h3>
-      <p><strong>${p.price} ₽/кг</strong></p>
+      <img src="${imgSrc}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/300x160/2d2d2d/666?text=Нет+фото'">
+      <div class="product-info">
+        <div class="product-rating">⭐ (0)</div>
+        <h3>${p.name}</h3>
+        <div class="product-price">${p.price} ₽/кг</div>
+        <div class="product-location">${p.category}</div>
+      </div>
     `;
     card.onclick = () => openProduct(p);
     productList.appendChild(card);
   });
 }
 
-// Дефолтные картинки по категориям
 function getDefaultImage(category) {
   const defaults = {
     'Варенье': 'https://cdn-icons-png.flaticon.com/512/415/415733.png',
@@ -66,11 +71,16 @@ function getDefaultImage(category) {
 }
 
 function showAll() {
+  currentCategory = 'Все товары';
+  categoryTitle.textContent = currentCategory;
   displayProducts(products);
   setActiveButton('all');
+  setActiveFooterButton(0);
 }
 
 function filterCategory(cat) {
+  currentCategory = cat;
+  categoryTitle.textContent = cat;
   const filtered = products.filter(p => p.category === cat);
   displayProducts(filtered);
   setActiveButton(cat);
@@ -84,33 +94,43 @@ function setActiveButton(category) {
   if (category === 'all') {
     document.querySelector('.nav-btn[onclick="showAll()"]').classList.add('active');
   } else {
-    document.querySelector(`.nav-btn[onclick="filterCategory('${category}')"]`).classList.add('active');
+    const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.textContent.includes(category));
+    if (btn) btn.classList.add('active');
   }
+}
+
+function setActiveFooterButton(index) {
+  document.querySelectorAll('.footer-btn').forEach((btn, i) => {
+    if (i === index) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
 }
 
 function openProduct(p) {
   currentProduct = p;
   modal.style.display = "block";
+  document.body.style.overflow = "hidden";
+  
   modalTitle.textContent = p.name;
   modalImage.src = p.image || getDefaultImage(p.category);
   modalImage.onerror = () => {
-    modalImage.src = 'https://via.placeholder.com/400x200?text=Нет+фото';
+    modalImage.src = 'https://via.placeholder.com/400x220/2d2d2d/666?text=Нет+фото';
   };
   modalPrice.textContent = `${p.price} ₽/кг`;
   modalDesc.textContent = p.description || 'Описание отсутствует';
   
-  // Сбрасываем вес и цену
   weightInput.value = '1.0';
   updateTotalPrice();
 }
 
-// Обновление итоговой цены при изменении веса
 function updateTotalPrice() {
   if (!currentProduct) return;
   
   let weight = parseFloat(weightInput.value);
   
-  // Валидация веса
   if (isNaN(weight) || weight <= 0) {
     weight = 0;
     totalPrice.textContent = '0 ₽';
@@ -120,7 +140,6 @@ function updateTotalPrice() {
     return;
   }
   
-  // Ограничение максимального веса
   if (weight > 100) {
     weight = 100;
     weightInput.value = '100';
@@ -128,7 +147,7 @@ function updateTotalPrice() {
   
   const total = Math.round(currentProduct.price * weight);
   totalPrice.textContent = `${total} ₽`;
-  totalPrice.style.color = '#8bc34a';
+  totalPrice.style.color = '#4CAF50';
   buyBtn.disabled = false;
   buyBtn.style.opacity = '1';
 }
@@ -139,17 +158,12 @@ function addToCart() {
   const weight = parseFloat(weightInput.value);
   
   if (isNaN(weight) || weight <= 0) {
-    if (window.Telegram && window.Telegram.WebApp) {
-      window.Telegram.WebApp.showAlert("❌ Укажите корректный вес!");
-    } else {
-      alert("❌ Укажите корректный вес!");
-    }
+    showTelegramAlert("❌ Укажите корректный вес!");
     return;
   }
   
   const total = Math.round(currentProduct.price * weight);
   
-  // Добавляем в корзину (или обновляем)
   if (cart[currentProduct.id]) {
     cart[currentProduct.id].weight += weight;
   } else {
@@ -159,49 +173,41 @@ function addToCart() {
     };
   }
   
-  // Уведомление
-  if (window.Telegram && window.Telegram.WebApp) {
-    window.Telegram.WebApp.showAlert(`✅ Добавлено в корзину:\n\n${currentProduct.name}\n${weight} кг × ${currentProduct.price} ₽ = ${total} ₽`);
-  } else {
-    alert(`✅ Добавлено в корзину:\n\n${currentProduct.name}\n${weight} кг × ${currentProduct.price} ₽ = ${total} ₽`);
-  }
+  showTelegramAlert(`✅ Добавлено в корзину:\n\n${currentProduct.name}\n${weight} кг × ${currentProduct.price} ₽ = ${total} ₽`);
   
   closeModal();
-  updateCartCount();
+  updateCartBadge();
 }
 
-function updateCartCount() {
+function updateCartBadge() {
   const count = Object.keys(cart).length;
-  // Можно добавить badge на кнопку корзины
-  console.log('Товаров в корзине:', count);
+  if (count > 0) {
+    cartBadge.textContent = count;
+    cartBadge.style.display = 'block';
+  } else {
+    cartBadge.style.display = 'none';
+  }
 }
 
 function closeModal() {
   modal.style.display = "none";
+  document.body.style.overflow = "auto";
   currentProduct = null;
 }
 
 function openSupport() {
-  if (window.Telegram && window.Telegram.WebApp) {
-    window.Telegram.WebApp.openTelegramLink("https://t.me/your_support_bot");
-  } else {
-    alert("Поддержка скоро будет доступна 💬");
-  }
+  showTelegramAlert("💬 Поддержка\n\nСвяжитесь с нами:\n@your_support_bot");
 }
 
 function openCart() {
+  setActiveFooterButton(1);
   const items = Object.values(cart);
   
   if (items.length === 0) {
-    if (window.Telegram && window.Telegram.WebApp) {
-      window.Telegram.WebApp.showAlert("Корзина пока пуста 🧺\n\nДобавьте товары из каталога!");
-    } else {
-      alert("Корзина пока пуста 🧺");
-    }
+    showTelegramAlert("Корзина пока пуста 🧺\n\nДобавьте товары из каталога!");
     return;
   }
   
-  // Формируем список заказа
   let message = "🧺 Ваша корзина:\n\n";
   let totalSum = 0;
   
@@ -215,25 +221,25 @@ function openCart() {
   
   message += `💰 Итого: ${totalSum} ₽`;
   
-  if (window.Telegram && window.Telegram.WebApp) {
-    window.Telegram.WebApp.showAlert(message);
-  } else {
-    alert(message);
-  }
+  showTelegramAlert(message);
 }
 
 function openOrders() {
+  setActiveFooterButton(2);
+  showTelegramAlert("У вас нет заказов 📦\n\nОформите первый заказ!");
+}
+
+function showTelegramAlert(text) {
   if (window.Telegram && window.Telegram.WebApp) {
-    window.Telegram.WebApp.showAlert("У вас нет заказов 📦\n\nОформите первый заказ!");
+    window.Telegram.WebApp.showAlert(text);
   } else {
-    alert("У вас нет заказов 📦");
+    alert(text);
   }
 }
 
-// Закрытие модалки при клике вне её
 window.onclick = function(e) {
   if (e.target == modal) {
-    modal.style.display = "none";
+    closeModal();
   }
 }
 
@@ -242,10 +248,9 @@ if (window.Telegram && window.Telegram.WebApp) {
   const tg = window.Telegram.WebApp;
   tg.ready();
   tg.expand();
-  
-  // Применяем тему Telegram
-  document.body.style.backgroundColor = tg.themeParams.bg_color || '#f5f5f5';
+  tg.setHeaderColor('#2d2d2d');
+  tg.setBackgroundColor('#1a1a1a');
 }
 
-// ЗАПУСК: загружаем данные при старте
+// Загрузка при старте
 loadProducts();
