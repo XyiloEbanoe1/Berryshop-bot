@@ -185,7 +185,7 @@ async def view_product(call: types.CallbackQuery):
         return
     
     pid, name, cat, price, desc, img = prod
-    text = f"🏷 <b>{name}</b>\n📂 Категория: {cat}\n💰 Цена: {price} ₽\n📝 {desc}"
+    text = f"🏷 <b>{name}</b>\n📂 Категория: {cat}\n💰 Цена: {price} ₽/кг\n📝 {desc}"
     
     if img:
         photo_path = os.path.join(IMAGES_DIR, img)
@@ -281,7 +281,7 @@ async def handle_text(msg: types.Message):
         pid = st["pid"]
         update_product_field(pid, "category", cat)
         set_admin_state(msg.from_user.id, "mode", "new_price")
-        await msg.answer("💰 Введите цену (в рублях):")
+        await msg.answer("💰 Введите цену (в рублях за кг):")
         
     elif mode == "new_price":
         try:
@@ -391,7 +391,7 @@ async def webhook_handler(request):
         return web.Response(status=500)
 
 app = web.Application()
-app.router.add_post(f"/webhook/{BOT_TOKEN}", webhook_handler)  # ❗ ДОБАВЛЕНО
+app.router.add_post(f"/webhook/{BOT_TOKEN}", webhook_handler)
 app.router.add_get("/", index)
 app.router.add_get("/web", index)
 app.router.add_get("/web/{path:.+}", static_handler)
@@ -408,7 +408,7 @@ async def main():
     webhook_url = f"{RENDER_EXTERNAL_URL}/webhook/{BOT_TOKEN}"
     
     # Установка webhook
-    webhook_info = await bot.set_webhook(webhook_url)
+    await bot.set_webhook(webhook_url)
     print(f"🤖 Webhook установлен: {webhook_url}")
 
     # AIOHTTP сервер
