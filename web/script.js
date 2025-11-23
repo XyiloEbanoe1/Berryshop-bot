@@ -256,13 +256,17 @@ window.onclick = (e) => {
   if (e.target == modal) closeModal();
 }
 
-// Инициализация
+// Инициализация Telegram WebApp
 if (window.Telegram?.WebApp) {
   const tg = window.Telegram.WebApp;
   tg.ready();
   tg.expand();
+  showBigMessage('✅ Telegram WebApp<br>готов', '#4CAF50');
+} else {
+  showBigMessage('⚠️ Telegram WebApp<br>недоступен', '#ff9800');
 }
 
 // Запуск
 console.log('🚀 Запуск приложения');
+showBigMessage('🚀 Запуск приложения');
 loadProducts();
