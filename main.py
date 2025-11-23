@@ -239,7 +239,7 @@ def build_actions_kb(pid):
 @dp.message(Command("start"))
 async def cmd_start(msg: types.Message):
     kb = types.ReplyKeyboardMarkup(
-        keyboard=[[types.KeyboardButton(text="🛍 Открыть магазин", web_app=types.WebAppInfo(url=f"{RENDER_EXTERNAL_URL}/web"))]],
+        keyboard=[[types.KeyboardButton(text="🛍 Открыть магазин", web_app=types.WebAppInfo(url=f"{RENDER_EXTERNAL_URL}/shop"))]],
         resize_keyboard=True
     )
     await msg.answer("Добро пожаловать! 🌿 У нас шишки можно не только курить, но и кушать 😋", reply_markup=kb)
@@ -491,6 +491,8 @@ app.router.add_post(f"/webhook/{BOT_TOKEN}", webhook_handler)
 app.router.add_get("/", index)
 app.router.add_get("/web", index)
 app.router.add_get("/web/{path:.+}", static_handler)
+app.router.add_get("/shop", index)
+app.router.add_get("/shop/{path:.+}", static_handler)
 app.router.add_get("/api/products", api_products)
 print("✅ Маршруты настроены")
 
