@@ -424,11 +424,11 @@ async def handle_text(msg: types.Message):
         await msg.answer("✅ Цена обновлена!")
         
     elif mode == "edit_desc":
-        pid = st["pid"]
-        update_product_field(pid, "description", msg.text.strip())
-        refresh_web_data()
-        clear_admin(msg.from_user.id)
-        await msg.answer("✅ Описание обновлено!")
+    pid = st["pid"]
+    update_product_field(pid, "description", msg.text)  # ← УБИРАЕМ .strip()
+    refresh_web_data()
+    clear_admin(msg.from_user.id)
+    await msg.answer("✅ Описание обновлено!")
 
 @dp.message(F.photo)
 async def save_photo(msg: types.Message):
