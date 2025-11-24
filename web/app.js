@@ -77,7 +77,7 @@ let currentProduct = null;
 function getImagePath(p) {
   // Если в базе написано "5.jpg" — делаем /images/5.jpg
   if (p.image && !p.image.startsWith('http')) {
-    return `/images/${p.image}`;
+    return `/web/images/${p.image}`;
   }
 
   // Если URL — оставляем как есть
@@ -86,7 +86,7 @@ function getImagePath(p) {
   }
 
   // Если картинки нет — плейсхолдер
-  return '/images/placeholder.jpg';
+  return '/web/images/placeholder.jpg';
 }
 
 function displayProducts(items) {
