@@ -105,6 +105,7 @@ function displayProducts(items) {
         <h3>${p.name}</h3>
         <div class="product-price">${p.price} ₽/кг</div>
         <div class="product-location">${p.category}</div>
+        <div class="product-description">${p.description.replace(/\n/g, '<br>')}</div>
       </div>
     `;
     card.onclick = () => openProduct(p);
@@ -164,7 +165,7 @@ function openProduct(p) {
   document.getElementById("modal-image").src = img;
 
   document.getElementById("modal-price").textContent = `${p.price} ₽/кг`;
-  document.getElementById("modal-description").textContent = p.description || 'Описание отсутствует';
+  document.getElementById("modal-description").innerHTML = (p.description || 'Описание отсутствует').replace(/\n/g, '<br>');
 
   weightInput.value = '1.0';
   updateTotalPrice();
