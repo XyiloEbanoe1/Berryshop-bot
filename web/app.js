@@ -29,29 +29,29 @@ let cart = {};
 // Загрузка товаров
 async function loadProducts() {
   const productList = document.getElementById("product-list");
-  
+
   try {
     showBigMessage('🔄 Загружаю товары...');
-    
+
     const response = await fetch('/api/products');
-    
+
     showBigMessage(`📡 Ответ сервера:<br>Статус ${response.status}`);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     products = await response.json();
-    
+
     showBigMessage(`✅ Загружено<br>${products.length} товаров`, '#4CAF50');
-    
+
     if (products.length === 0) {
       productList.innerHTML = '<p style="color: red; text-align: center; padding: 20px; grid-column: 1/-1;">⚠️ Товары не найдены!</p>';
       return;
     }
-    
+
     showAll();
-    
+
   } catch (error) {
     showBigMessage(`❌ ОШИБКА<br>${error.message}`, '#ff5555');
     productList.innerHTML = `
@@ -73,6 +73,22 @@ const cartBadge = document.getElementById("cart-badge");
 
 let currentProduct = null;
 
+// ---------- ИСПРАВЛЕННЫЕ КАРТИНКИ ----------
+function getImagePath(p) {
+  // Если в базе написано "5.jpg" — делаем /images/5.jpg
+  if (p.image && !p.image.startsWith('http')) {
+    return `/images/${p.image}`;
+  }
+
+  // Если URL — оставляем как есть
+  if (p.image && p.image.startsWith('http')) {
+    return p.image;
+  }
+
+  // Если картинки нет — плейсхолдер
+  return '/images/placeholder.jpg';
+}
+
 function displayProducts(items) {
   productList.innerHTML = "";
   
@@ -84,11 +100,12 @@ function displayProducts(items) {
   items.forEach(p => {
     const card = document.createElement("div");
     card.className = "product";
-    
-    let imgSrc = p.image || getDefaultImage(p.category);
-    
+
+    const imgSrc = getImagePath(p);
+
     card.innerHTML = `
-      <img src="${imgSrc}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/300x160/2d2d2d/666?text=Фото'">
+      <img src="${imgSrc}" alt="${p.name}"
+           onerror="this.src='/images/placeholder.jpg'">
       <div class="product-info">
         <div class="product-rating">⭐ (0)</div>
         <h3>${p.name}</h3>
@@ -103,11 +120,11 @@ function displayProducts(items) {
 
 function getDefaultImage(category) {
   const defaults = {
-    'Варенье': 'https://cdn-icons-png.flaticon.com/512/415/415733.png',
-    'Мёд': 'https://cdn-icons-png.flaticon.com/512/2909/2909762.png',
-    'Чай': 'https://cdn-icons-png.flaticon.com/512/590/590836.png'
+    'Варенье': '/images/default_jam.png',
+    'Мёд': '/images/default_honey.png',
+    'Чай': '/images/default_tea.png'
   };
-  return defaults[category] || 'https://cdn-icons-png.flaticon.com/512/3050/3050156.png';
+  return defaults[category] || '/images/placeholder.jpg';
 }
 
 function showAll() {
@@ -129,7 +146,9 @@ function setActiveButton(category) {
   if (category === 'all') {
     document.querySelector('.nav-btn[onclick="showAll()"]').classList.add('active');
   } else {
-    const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.textContent.includes(category));
+    const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b =>
+      b.textContent.includes(category)
+    );
     if (btn) btn.classList.add('active');
   }
 }
@@ -144,12 +163,15 @@ function openProduct(p) {
   currentProduct = p;
   modal.style.display = "block";
   document.body.style.overflow = "hidden";
-  
+
   document.getElementById("modal-title").textContent = p.name;
-  document.getElementById("modal-image").src = p.image || getDefaultImage(p.category);
+
+  const img = getImagePath(p);
+  document.getElementById("modal-image").src = img;
+
   document.getElementById("modal-price").textContent = `${p.price} ₽/кг`;
   document.getElementById("modal-description").textContent = p.description || 'Описание отсутствует';
-  
+
   weightInput.value = '1.0';
   updateTotalPrice();
 }
