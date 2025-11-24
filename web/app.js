@@ -105,7 +105,6 @@ function displayProducts(items) {
         <h3>${p.name}</h3>
         <div class="product-price">${p.price} ₽/кг</div>
         <div class="product-location">${p.category}</div>
-        <div class="product-description">${p.description.replace(/\n/g, '<br>')}</div>
       </div>
     `;
     card.onclick = () => openProduct(p);
