@@ -391,7 +391,7 @@ async def handle_text(msg: types.Message):
         await msg.answer("📝 Введите описание:")
         
     elif mode == "new_desc":
-        desc = msg.text.strip()
+        desc = msg.text
         pid = st["pid"]
         update_product_field(pid, "description", desc)
         set_admin_state(msg.from_user.id, "mode", "new_photo")
