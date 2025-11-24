@@ -105,7 +105,7 @@ function displayProducts(items) {
 
     card.innerHTML = `
       <img src="${imgSrc}" alt="${p.name}"
-           onerror="this.src='/images/placeholder.jpg'">
+           onerror="this.src='/web/images/placeholder.jpg'">
       <div class="product-info">
         <div class="product-rating">⭐ (0)</div>
         <h3>${p.name}</h3>
@@ -120,11 +120,11 @@ function displayProducts(items) {
 
 function getDefaultImage(category) {
   const defaults = {
-    'Варенье': '/images/default_jam.png',
-    'Мёд': '/images/default_honey.png',
-    'Чай': '/images/default_tea.png'
+    'Варенье': '/web/images/default_jam.png',
+    'Мёд': '/web/images/default_honey.png',
+    'Чай': '/web/images/default_tea.png'
   };
-  return defaults[category] || '/images/placeholder.jpg';
+  return defaults[category] || '/web/images/placeholder.jpg';
 }
 
 function showAll() {
