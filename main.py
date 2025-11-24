@@ -494,6 +494,7 @@ app.router.add_get("/web/{path:.+}", static_handler)
 app.router.add_get("/shop", index)
 app.router.add_get("/shop/{path:.+}", static_handler)
 app.router.add_get("/api/products", api_products)
+app.router.add_static("/images/", IMAGES_DIR)
 print("✅ Маршруты настроены")
 
 # --------------------------------
