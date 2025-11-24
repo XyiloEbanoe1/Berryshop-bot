@@ -75,18 +75,12 @@ let currentProduct = null;
 
 // ---------- ИСПРАВЛЕННЫЕ КАРТИНКИ ----------
 function getImagePath(p) {
-  // Если в базе написано "5.jpg" — делаем /images/5.jpg
-  if (p.image && !p.image.startsWith('http')) {
-    return `/web/images/${p.image}`;
+  if (p.image) {
+    // Убираем "images/" если есть
+    const clean = p.image.replace('images/', '');
+    return `/images/${clean}`;
   }
-
-  // Если URL — оставляем как есть
-  if (p.image && p.image.startsWith('http')) {
-    return p.image;
-  }
-
-  // Если картинки нет — плейсхолдер
-  return '/web/images/placeholder.jpg';
+  return '/images/placeholder.jpg';
 }
 
 function displayProducts(items) {
