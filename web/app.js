@@ -120,7 +120,7 @@ function getPriceLogic(category) {
       minWeight: 0.2, // 200г
       maxWeight: 50,
       step: 0.1,
-      placeholder: "Введите вес (200-999г или 0.2-50кг)"
+      placeholder: "Введите вес"
     },
     "Мёд": {
       display: (price) => `${price} ₽/кг`,
@@ -129,7 +129,7 @@ function getPriceLogic(category) {
       minWeight: 0.2, // 200г
       maxWeight: 50,
       step: 0.1,
-      placeholder: "Введите вес (200-999г или 0.2-50кг)"
+      placeholder: "Введите вес"
     },
     "Чай": {
       display: (price) => `${price} ₽/100г`,
