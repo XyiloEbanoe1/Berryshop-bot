@@ -326,8 +326,8 @@ function showWeightOptions() {
           placeholder="${priceLogic.placeholder}"
           oninput="updateCustomPrice()">
         <div id="weight-error" style="color: #ff5555; font-size: 12px; margin-top: 5px; display: none;"></div>
-        <div style="color: #666; font-size: 11px; margin-top: 5px;">
-          Примеры: 350 (граммы) или 1.5 (килограммы)
+        <div style="color: #666; font-size: 10px; margin-top: 3px;">
+          Примеры: 350 (граммы) или 1.5 (кг)
         </div>
       </div>
       
