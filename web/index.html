@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Магазин северных ягод</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/web/style.css?v=2">
+  <link rel="stylesheet" href="/web/style.css?v=3">
 </head>
 <body>
   <header>
@@ -25,10 +25,8 @@
     </div>
   </main>
 
-  <!-- Кнопка поддержки (плавающая) -->
   <button class="support-btn" onclick="openSupport()">💬</button>
 
-  <!-- Нижняя навигация -->
   <footer>
     <button class="footer-btn active" onclick="showAll()">
       <span class="footer-btn-icon">🛍️</span>
@@ -47,7 +45,6 @@
     </button>
   </footer>
 
-  <!-- Модальное окно товара -->
   <div id="product-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -60,20 +57,8 @@
         <p class="modal-price" id="modal-price">0 ₽/кг</p>
         <p class="modal-description" id="modal-description">Описание</p>
         
-        <div class="weight-selector">
-          <label for="weight-input">⚖️ Укажите вес (кг):</label>
-          <input 
-            type="number" 
-            id="weight-input" 
-            min="0.1" 
-            max="100" 
-            step="0.1" 
-            value="1.0"
-            oninput="updateTotalPrice()">
-          
-          <div class="total-price">
-            Итого: <span id="total-price">0 ₽</span>
-          </div>
+        <div id="weight-container" class="weight-selector">
+          <!-- Сюда JS добавит кнопки выбора веса -->
         </div>
         
         <button id="buy-btn" onclick="addToCart()">🛒 Добавить в корзину</button>
@@ -81,6 +66,6 @@
     </div>
   </div>
 
-  <script src="/web/app.js"></script>
+  <script src="/web/app.js?v=3"></script>
 </body>
 </html>
