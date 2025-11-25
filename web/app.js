@@ -66,17 +66,15 @@ async function loadProducts() {
 const productList = document.getElementById("product-list");
 const modal = document.getElementById("product-modal");
 const categoryTitle = document.getElementById("category-title");
-const weightInput = document.getElementById("weight-input");
-const totalPrice = document.getElementById("total-price");
 const buyBtn = document.getElementById("buy-btn");
 const cartBadge = document.getElementById("cart-badge");
 
 let currentProduct = null;
+let selectedWeight = null;
+let selectedDiscount = 0;
 
-// ---------- ИСПРАВЛЕННЫЕ КАРТИНКИ ----------
 function getImagePath(p) {
   if (p.image) {
-    // Убираем "images/" если есть
     const clean = p.image.replace('images/', '');
     return `/images/${clean}`;
   }
@@ -96,29 +94,23 @@ function displayProducts(items) {
     card.className = "product";
 
     const imgSrc = getImagePath(p);
+    
+    // Цена за 100г (делим цену за кг на 10)
+    const pricePer100g = Math.round(p.price / 10);
 
     card.innerHTML = `
       <img src="${imgSrc}" alt="${p.name}"
-           onerror="this.src='/web/images/placeholder.jpg'">
+           onerror="this.src='/images/placeholder.jpg'">
       <div class="product-info">
         <div class="product-rating">⭐ (0)</div>
         <h3>${p.name}</h3>
-        <div class="product-price">${p.price} ₽/кг</div>
+        <div class="product-price">${pricePer100g} ₽/100г</div>
         <div class="product-location">${p.category}</div>
       </div>
     `;
     card.onclick = () => openProduct(p);
     productList.appendChild(card);
   });
-}
-
-function getDefaultImage(category) {
-  const defaults = {
-    'Варенье': '/web/images/default_jam.png',
-    'Мёд': '/web/images/default_honey.png',
-    'Чай': '/web/images/default_tea.png'
-  };
-  return defaults[category] || '/web/images/placeholder.jpg';
 }
 
 function showAll() {
@@ -155,61 +147,210 @@ function setActiveFooterButton(index) {
 
 function openProduct(p) {
   currentProduct = p;
+  selectedWeight = null;
+  selectedDiscount = 0;
+  
   modal.style.display = "block";
   document.body.style.overflow = "hidden";
 
   document.getElementById("modal-title").textContent = p.name;
-
-  const img = getImagePath(p);
-  document.getElementById("modal-image").src = img;
-
+  document.getElementById("modal-image").src = getImagePath(p);
   document.getElementById("modal-price").textContent = `${p.price} ₽/кг`;
   document.getElementById("modal-description").innerHTML = (p.description || 'Описание отсутствует').replace(/\n/g, '<br>');
 
-  weightInput.value = '1.0';
+  // Показываем блок выбора веса
+  showWeightOptions();
+}
+
+function showWeightOptions() {
+  const container = document.getElementById("weight-container");
+  
+  container.innerHTML = `
+    <div class="weight-options">
+      <button class="weight-option-btn" onclick="selectWeight(1.4, 0)">
+        <span class="weight-value">~1.4 кг</span>
+        <span class="weight-price">${Math.round(currentProduct.price * 1.4)} ₽</span>
+      </button>
+      
+      <button class="weight-option-btn" onclick="selectWeight(2.3, 5)">
+        <span class="weight-value">~2.3 кг</span>
+        <span class="weight-discount">-5%</span>
+        <span class="weight-price">${Math.round(currentProduct.price * 2.3 * 0.95)} ₽</span>
+      </button>
+      
+      <button class="weight-option-btn" onclick="selectWeight(2.8, 10)">
+        <span class="weight-value">~2.8 кг</span>
+        <span class="weight-discount">-10%</span>
+        <span class="weight-price">${Math.round(currentProduct.price * 2.8 * 0.9)} ₽</span>
+      </button>
+      
+      <button class="weight-option-btn custom" onclick="showCustomInput()">
+        <span class="weight-value">✏️ Свой вариант</span>
+      </button>
+    </div>
+    
+    <div id="custom-weight-input" style="display: none; margin-top: 15px;">
+      <label for="weight-input">⚖️ Укажите вес (кг):</label>
+      <input 
+        type="number" 
+        id="weight-input" 
+        min="0.1" 
+        max="50" 
+        step="0.1" 
+        placeholder="От 0.1 до 50 кг"
+        oninput="updateCustomPrice()">
+      <div id="weight-error" style="color: #ff5555; font-size: 12px; margin-top: 5px; display: none;"></div>
+    </div>
+    
+    <div id="total-price-block" style="display: none; margin-top: 15px;">
+      <div class="total-price">
+        Итого: <span id="total-price">0 ₽</span>
+      </div>
+    </div>
+  `;
+  
+  buyBtn.disabled = true;
+  buyBtn.style.opacity = '0.5';
+}
+
+function selectWeight(weight, discount) {
+  selectedWeight = weight;
+  selectedDiscount = discount;
+  
+  // Скрываем custom input если был открыт
+  document.getElementById("custom-weight-input").style.display = "none";
+  
+  // Подсвечиваем выбранную кнопку
+  document.querySelectorAll('.weight-option-btn').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  event.target.closest('.weight-option-btn').classList.add('selected');
+  
+  // Показываем итоговую цену
+  updateTotalPrice();
+}
+
+function showCustomInput() {
+  // Убираем выделение с кнопок
+  document.querySelectorAll('.weight-option-btn').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  event.target.closest('.weight-option-btn').classList.add('selected');
+  
+  selectedWeight = null;
+  selectedDiscount = 0;
+  
+  document.getElementById("custom-weight-input").style.display = "block";
+  document.getElementById("weight-input").focus();
+  document.getElementById("total-price-block").style.display = "none";
+  
+  buyBtn.disabled = true;
+  buyBtn.style.opacity = '0.5';
+}
+
+function updateCustomPrice() {
+  const input = document.getElementById("weight-input");
+  const errorDiv = document.getElementById("weight-error");
+  let weight = parseFloat(input.value);
+  
+  // Убираем ошибку
+  errorDiv.style.display = "none";
+  
+  // Валидация
+  if (isNaN(weight) || weight === 0) {
+    document.getElementById("total-price-block").style.display = "none";
+    buyBtn.disabled = true;
+    buyBtn.style.opacity = '0.5';
+    return;
+  }
+  
+  // Проверка минимума
+  if (weight < 0.1) {
+    errorDiv.textContent = "⚠️ Минимальный вес: 0.1 кг (100г)";
+    errorDiv.style.display = "block";
+    document.getElementById("total-price-block").style.display = "none";
+    buyBtn.disabled = true;
+    buyBtn.style.opacity = '0.5';
+    return;
+  }
+  
+  // Проверка максимума
+  if (weight > 50) {
+    errorDiv.textContent = "⚠️ Максимальный вес: 50 кг";
+    errorDiv.style.display = "block";
+    document.getElementById("total-price-block").style.display = "none";
+    buyBtn.disabled = true;
+    buyBtn.style.opacity = '0.5';
+    return;
+  }
+  
+  // Проверка точности (не более 3 знаков после запятой)
+  const decimalPart = (weight.toString().split('.')[1] || '');
+  if (decimalPart.length > 3) {
+    weight = parseFloat(weight.toFixed(3));
+    input.value = weight;
+  }
+  
+  selectedWeight = weight;
+  selectedDiscount = 0;
   updateTotalPrice();
 }
 
 function updateTotalPrice() {
-  if (!currentProduct) return;
+  if (!selectedWeight) return;
   
-  let weight = parseFloat(weightInput.value);
+  const priceBlock = document.getElementById("total-price-block");
+  const totalPriceSpan = document.getElementById("total-price");
   
-  if (isNaN(weight) || weight <= 0) {
-    totalPrice.textContent = '0 ₽';
-    buyBtn.disabled = true;
-    return;
+  // Расчёт с учётом скидки
+  const basePrice = currentProduct.price * selectedWeight;
+  const discount = basePrice * (selectedDiscount / 100);
+  const finalPrice = Math.round(basePrice - discount);
+  
+  let priceText = `${finalPrice} ₽`;
+  
+  if (selectedDiscount > 0) {
+    priceText = `<span style="text-decoration: line-through; color: #999; font-size: 18px;">${Math.round(basePrice)} ₽</span> ${finalPrice} ₽`;
   }
   
-  if (weight > 100) {
-    weight = 100;
-    weightInput.value = '100';
-  }
+  totalPriceSpan.innerHTML = priceText;
+  priceBlock.style.display = "block";
   
-  const total = Math.round(currentProduct.price * weight);
-  totalPrice.textContent = `${total} ₽`;
   buyBtn.disabled = false;
+  buyBtn.style.opacity = '1';
 }
 
 function addToCart() {
-  if (!currentProduct) return;
-  
-  const weight = parseFloat(weightInput.value);
-  
-  if (isNaN(weight) || weight <= 0) {
-    showTelegramAlert("❌ Укажите корректный вес!");
+  if (!currentProduct || !selectedWeight) {
+    showTelegramAlert("❌ Выберите вес!");
     return;
   }
   
-  const total = Math.round(currentProduct.price * weight);
+  const basePrice = currentProduct.price * selectedWeight;
+  const discount = basePrice * (selectedDiscount / 100);
+  const finalPrice = Math.round(basePrice - discount);
   
   if (cart[currentProduct.id]) {
-    cart[currentProduct.id].weight += weight;
+    cart[currentProduct.id].weight += selectedWeight;
+    cart[currentProduct.id].totalPrice += finalPrice;
   } else {
-    cart[currentProduct.id] = { product: currentProduct, weight: weight };
+    cart[currentProduct.id] = { 
+      product: currentProduct, 
+      weight: selectedWeight,
+      totalPrice: finalPrice,
+      discount: selectedDiscount
+    };
   }
   
-  showTelegramAlert(`✅ Добавлено:\n\n${currentProduct.name}\n${weight} кг × ${currentProduct.price} ₽ = ${total} ₽`);
+  let message = `✅ Добавлено:\n\n${currentProduct.name}\n~${selectedWeight} кг`;
+  
+  if (selectedDiscount > 0) {
+    message += ` (-${selectedDiscount}% скидка)`;
+  }
+  
+  message += `\n💰 ${finalPrice} ₽`;
+  
+  showTelegramAlert(message);
   
   closeModal();
   updateCartBadge();
@@ -225,6 +366,8 @@ function closeModal() {
   modal.style.display = "none";
   document.body.style.overflow = "auto";
   currentProduct = null;
+  selectedWeight = null;
+  selectedDiscount = 0;
 }
 
 function openSupport() {
@@ -246,9 +389,14 @@ function openCart() {
   items.forEach(item => {
     const p = item.product;
     const w = item.weight;
-    const sum = Math.round(p.price * w);
-    totalSum += sum;
-    message += `${p.name}\n${w} кг × ${p.price} ₽ = ${sum} ₽\n\n`;
+    const price = item.totalPrice;
+    totalSum += price;
+    
+    message += `${p.name}\n~${w} кг`;
+    if (item.discount > 0) {
+      message += ` (-${item.discount}%)`;
+    }
+    message += `\n${price} ₽\n\n`;
   });
   
   message += `💰 Итого: ${totalSum} ₽`;
