@@ -81,26 +81,55 @@ function getImagePath(p) {
   return '/images/placeholder.jpg';
 }
 
+// Функция для умного определения веса
+function parseSmartWeight(inputValue) {
+  const value = parseFloat(inputValue);
+  
+  if (isNaN(value)) return { weight: null, error: "Введите число" };
+  
+  // Дробные числа 0.2-49.9 → кг
+  if (value.toString().includes('.') && value >= 0.2 && value <= 49.9) {
+    return { weight: value, unit: 'kg' };
+  }
+  
+  // Целые числа 1-50 → кг
+  if (Number.isInteger(value) && value >= 1 && value <= 50) {
+    return { weight: value, unit: 'kg' };
+  }
+  
+  // Целые числа 200-999 → граммы
+  if (Number.isInteger(value) && value >= 200 && value <= 999) {
+    return { weight: value / 1000, unit: 'g' };
+  }
+  
+  // Ошибка для непонятных значений
+  if (value >= 50 && value <= 199) {
+    return { weight: null, error: "Непонятный вес. Введите:\n• 200-999 (граммы)\n• 0.2-50 (килограммы)" };
+  }
+  
+  return { weight: null, error: "Введите вес от 200г до 50кг" };
+}
+
 // Функция для определения логики цены по категории
 function getPriceLogic(category) {
   const logic = {
     "Варенье": {
       display: (price) => `${Math.round(price / 10)} ₽/100г`,
-      modalDisplay: (price) => `${price} ₽/кг`,
-      calculate: (price, weight) => price * weight,
-      minWeight: 0.1,
+      modalDisplay: (price) => `${Math.round(price / 10)} ₽/100г`, // ИЗМЕНИЛ - теперь за 100г
+      calculate: (price, weight) => (price / 10) * weight * 10, // цена за 100г × вес в кг × 10
+      minWeight: 0.2, // 200г
       maxWeight: 50,
       step: 0.1,
-      placeholder: "От 0.1 до 50 кг"
+      placeholder: "Введите вес (200-999г или 0.2-50кг)"
     },
     "Мёд": {
       display: (price) => `${price} ₽/кг`,
       modalDisplay: (price) => `${price} ₽/кг`,
       calculate: (price, weight) => price * weight,
-      minWeight: 0.1,
+      minWeight: 0.2, // 200г
       maxWeight: 50,
       step: 0.1,
-      placeholder: "От 0.1 до 50 кг"
+      placeholder: "Введите вес (200-999г или 0.2-50кг)"
     },
     "Чай": {
       display: (price) => `${price} ₽/100г`,
@@ -109,7 +138,7 @@ function getPriceLogic(category) {
       minWeight: 0.025,
       maxWeight: 1,
       step: 0.025,
-      placeholder: "От 0.025 до 1 кг"
+      placeholder: "Введите вес (0.025-1 кг)"
     }
   };
   return logic[category] || logic["Варенье"];
@@ -244,7 +273,7 @@ function showWeightOptions() {
   if (currentProduct.category === "Чай") {
     container.innerHTML = `
       <div id="custom-weight-input" style="margin-top: 15px;">
-        <label for="weight-input">⚖️ Укажите вес (кг):</label>
+        <label for="weight-input">⚖️ Укажите вес:</label>
         <input 
           type="number" 
           id="weight-input" 
@@ -271,10 +300,10 @@ function showWeightOptions() {
           <span class="weight-price">${Math.round(priceLogic.calculate(currentProduct.price, 1.4))} ₽</span>
         </button>
         
-        <button class="weight-option-btn" onclick="selectWeight(2.3, 5)">
-          <span class="weight-value">~2.3 кг</span>
+        <button class="weight-option-btn" onclick="selectWeight(2.1, 5)">
+          <span class="weight-value">~2.1 кг</span>
           <span class="weight-discount">-5%</span>
-          <span class="weight-price">${Math.round(priceLogic.calculate(currentProduct.price, 2.3) * 0.95)} ₽</span>
+          <span class="weight-price">${Math.round(priceLogic.calculate(currentProduct.price, 2.1) * 0.95)} ₽</span>
         </button>
         
         <button class="weight-option-btn" onclick="selectWeight(2.8, 10)">
@@ -289,16 +318,17 @@ function showWeightOptions() {
       </div>
       
       <div id="custom-weight-input" style="display: none; margin-top: 15px;">
-        <label for="weight-input">⚖️ Укажите вес (кг):</label>
+        <label for="weight-input">⚖️ Укажите вес:</label>
         <input 
           type="number" 
           id="weight-input" 
-          min="${priceLogic.minWeight}" 
-          max="${priceLogic.maxWeight}" 
-          step="${priceLogic.step}" 
+          step="0.001"
           placeholder="${priceLogic.placeholder}"
           oninput="updateCustomPrice()">
         <div id="weight-error" style="color: #ff5555; font-size: 12px; margin-top: 5px; display: none;"></div>
+        <div style="color: #666; font-size: 11px; margin-top: 5px;">
+          Примеры: 350 (граммы) или 1.5 (килограммы)
+        </div>
       </div>
       
       <div id="total-price-block" style="display: none; margin-top: 15px;">
@@ -353,22 +383,14 @@ function updateCustomPrice() {
   const errorDiv = document.getElementById("weight-error");
   const priceLogic = getPriceLogic(currentProduct.category);
   
-  let weight = parseFloat(input.value);
+  const result = parseSmartWeight(input.value);
   
   // Убираем ошибку
   errorDiv.style.display = "none";
   
-  // Валидация
-  if (isNaN(weight) || weight === 0) {
-    document.getElementById("total-price-block").style.display = "none";
-    buyBtn.disabled = true;
-    buyBtn.style.opacity = '0.5';
-    return;
-  }
-  
-  // Проверка минимума
-  if (weight < priceLogic.minWeight) {
-    errorDiv.textContent = `⚠️ Минимальный вес: ${priceLogic.minWeight} кг`;
+  // Проверка на ошибки
+  if (result.error) {
+    errorDiv.textContent = result.error;
     errorDiv.style.display = "block";
     document.getElementById("total-price-block").style.display = "none";
     buyBtn.disabled = true;
@@ -376,7 +398,18 @@ function updateCustomPrice() {
     return;
   }
   
-  // Проверка максимума
+  const weight = result.weight;
+  
+  // Дополнительная проверка минимума и максимума
+  if (weight < priceLogic.minWeight) {
+    errorDiv.textContent = `⚠️ Минимальный вес: ${priceLogic.minWeight} кг (${priceLogic.minWeight * 1000}г)`;
+    errorDiv.style.display = "block";
+    document.getElementById("total-price-block").style.display = "none";
+    buyBtn.disabled = true;
+    buyBtn.style.opacity = '0.5';
+    return;
+  }
+  
   if (weight > priceLogic.maxWeight) {
     errorDiv.textContent = `⚠️ Максимальный вес: ${priceLogic.maxWeight} кг`;
     errorDiv.style.display = "block";
@@ -386,11 +419,11 @@ function updateCustomPrice() {
     return;
   }
   
-  // Проверка точности (не более 3 знаков после запятой)
-  const decimalPart = (weight.toString().split('.')[1] || '');
-  if (decimalPart.length > 3) {
-    weight = parseFloat(weight.toFixed(3));
-    input.value = weight;
+  // Показываем понятный вес в поле ввода
+  if (result.unit === 'g') {
+    input.value = weight * 1000; // показываем в граммах
+  } else {
+    input.value = weight; // показываем в кг
   }
   
   selectedWeight = weight;
@@ -446,7 +479,12 @@ function addToCart() {
     };
   }
   
-  let message = `✅ Добавлено:\n\n${currentProduct.name}\n~${selectedWeight} кг`;
+  // Показываем вес в понятном формате
+  let displayWeight = selectedWeight >= 1 ? 
+    `${selectedWeight} кг` : 
+    `${Math.round(selectedWeight * 1000)} г`;
+  
+  let message = `✅ Добавлено:\n\n${currentProduct.name}\n${displayWeight}`;
   
   if (selectedDiscount > 0) {
     message += ` (-${selectedDiscount}% скидка)`;
@@ -496,7 +534,10 @@ function openCart() {
     const price = item.totalPrice;
     totalSum += price;
     
-    message += `${p.name}\n~${w} кг`;
+    // Показываем вес в понятном формате
+    const displayWeight = w >= 1 ? `${w} кг` : `${Math.round(w * 1000)} г`;
+    
+    message += `${p.name}\n${displayWeight}`;
     if (item.discount > 0) {
       message += ` (-${item.discount}%)`;
     }
