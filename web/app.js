@@ -81,6 +81,40 @@ function getImagePath(p) {
   return '/images/placeholder.jpg';
 }
 
+// Функция для определения логики цены по категории
+function getPriceLogic(category) {
+  const logic = {
+    "Варенье": {
+      display: (price) => `${Math.round(price / 10)} ₽/100г`,
+      modalDisplay: (price) => `${price} ₽/кг`,
+      calculate: (price, weight) => price * weight,
+      minWeight: 0.1,
+      maxWeight: 50,
+      step: 0.1,
+      placeholder: "От 0.1 до 50 кг"
+    },
+    "Мёд": {
+      display: (price) => `${price} ₽/кг`,
+      modalDisplay: (price) => `${price} ₽/кг`,
+      calculate: (price, weight) => price * weight,
+      minWeight: 0.1,
+      maxWeight: 50,
+      step: 0.1,
+      placeholder: "От 0.1 до 50 кг"
+    },
+    "Чай": {
+      display: (price) => `${price} ₽/100г`,
+      modalDisplay: (price) => `${price} ₽/100г`,
+      calculate: (price, weight) => price * weight * 10, // 500 руб за 100г = 5000 руб за кг
+      minWeight: 0.025,
+      maxWeight: 1,
+      step: 0.025,
+      placeholder: "От 0.025 до 1 кг"
+    }
+  };
+  return logic[category] || logic["Варенье"];
+}
+
 function displayProducts(items) {
   productList.innerHTML = "";
   
@@ -99,12 +133,11 @@ function displayProducts(items) {
       const categoryHeader = document.createElement("div");
       categoryHeader.className = "category-header";
       categoryHeader.style.gridColumn = "1 / -1";
-      categoryHeader.style.marginTop = "20px"; // Отступ сверху
-      categoryHeader.style.marginBottom = "10px"; // Отступ снизу
+      categoryHeader.style.marginTop = "20px";
+      categoryHeader.style.marginBottom = "10px";
       categoryHeader.style.paddingLeft = "10px";
-      categoryHeader.style.borderLeft = "4px solid #4CAF50"; // Зеленая полоска слева
+      categoryHeader.style.borderLeft = "4px solid #4CAF50";
       
-      // Подбираем эмодзи для категории
       let emoji = "📦";
       if (p.category === "Варенье") emoji = "🍓";
       if (p.category === "Мёд") emoji = "🍯";
@@ -125,16 +158,15 @@ function displayProducts(items) {
     card.className = "product";
 
     const imgSrc = getImagePath(p);
+    const priceLogic = getPriceLogic(p.category);
     
-    const pricePer100g = Math.round(p.price / 10);
-
     card.innerHTML = `
       <img src="${imgSrc}" alt="${p.name}"
            onerror="this.src='/images/placeholder.jpg'">
       <div class="product-info">
         <div class="product-rating">⭐ (0)</div>
         <h3>${p.name}</h3>
-        <div class="product-price">${pricePer100g} ₽/100г</div>
+        <div class="product-price">${priceLogic.display(p.price)}</div>
       </div>
     `;
     card.onclick = () => openProduct(p);
@@ -194,7 +226,10 @@ function openProduct(p) {
 
   document.getElementById("modal-title").textContent = p.name;
   document.getElementById("modal-image").src = getImagePath(p);
-  document.getElementById("modal-price").textContent = `${p.price} ₽/кг`;
+  
+  const priceLogic = getPriceLogic(p.category);
+  document.getElementById("modal-price").textContent = priceLogic.modalDisplay(p.price);
+  
   document.getElementById("modal-description").innerHTML = (p.description || 'Описание отсутствует').replace(/\n/g, '<br>');
 
   // Показываем блок выбора веса
@@ -203,50 +238,76 @@ function openProduct(p) {
 
 function showWeightOptions() {
   const container = document.getElementById("weight-container");
+  const priceLogic = getPriceLogic(currentProduct.category);
   
-  container.innerHTML = `
-    <div class="weight-options">
-      <button class="weight-option-btn" onclick="selectWeight(1.4, 0)">
-        <span class="weight-value">~1.4 кг</span>
-        <span class="weight-price">${Math.round(currentProduct.price * 1.4)} ₽</span>
-      </button>
-      
-      <button class="weight-option-btn" onclick="selectWeight(2.3, 5)">
-        <span class="weight-value">~2.3 кг</span>
-        <span class="weight-discount">-5%</span>
-        <span class="weight-price">${Math.round(currentProduct.price * 2.3 * 0.95)} ₽</span>
-      </button>
-      
-      <button class="weight-option-btn" onclick="selectWeight(2.8, 10)">
-        <span class="weight-value">~2.8 кг</span>
-        <span class="weight-discount">-10%</span>
-        <span class="weight-price">${Math.round(currentProduct.price * 2.8 * 0.9)} ₽</span>
-      </button>
-      
-      <button class="weight-option-btn custom" onclick="showCustomInput()">
-        <span class="weight-value">✏️ Свой вариант</span>
-      </button>
-    </div>
-    
-    <div id="custom-weight-input" style="display: none; margin-top: 15px;">
-      <label for="weight-input">⚖️ Укажите вес (кг):</label>
-      <input 
-        type="number" 
-        id="weight-input" 
-        min="0.1" 
-        max="50" 
-        step="0.1" 
-        placeholder="От 0.1 до 50 кг"
-        oninput="updateCustomPrice()">
-      <div id="weight-error" style="color: #ff5555; font-size: 12px; margin-top: 5px; display: none;"></div>
-    </div>
-    
-    <div id="total-price-block" style="display: none; margin-top: 15px;">
-      <div class="total-price">
-        Итого: <span id="total-price">0 ₽</span>
+  // Для чая убираем готовые варианты (только кастомный ввод)
+  if (currentProduct.category === "Чай") {
+    container.innerHTML = `
+      <div id="custom-weight-input" style="margin-top: 15px;">
+        <label for="weight-input">⚖️ Укажите вес (кг):</label>
+        <input 
+          type="number" 
+          id="weight-input" 
+          min="${priceLogic.minWeight}" 
+          max="${priceLogic.maxWeight}" 
+          step="${priceLogic.step}" 
+          placeholder="${priceLogic.placeholder}"
+          oninput="updateCustomPrice()">
+        <div id="weight-error" style="color: #ff5555; font-size: 12px; margin-top: 5px; display: none;"></div>
       </div>
-    </div>
-  `;
+      
+      <div id="total-price-block" style="display: none; margin-top: 15px;">
+        <div class="total-price">
+          Итого: <span id="total-price">0 ₽</span>
+        </div>
+      </div>
+    `;
+  } else {
+    // Для варенья и мёда - готовые варианты + кастомный
+    container.innerHTML = `
+      <div class="weight-options">
+        <button class="weight-option-btn" onclick="selectWeight(1.4, 0)">
+          <span class="weight-value">~1.4 кг</span>
+          <span class="weight-price">${Math.round(priceLogic.calculate(currentProduct.price, 1.4))} ₽</span>
+        </button>
+        
+        <button class="weight-option-btn" onclick="selectWeight(2.3, 5)">
+          <span class="weight-value">~2.3 кг</span>
+          <span class="weight-discount">-5%</span>
+          <span class="weight-price">${Math.round(priceLogic.calculate(currentProduct.price, 2.3) * 0.95)} ₽</span>
+        </button>
+        
+        <button class="weight-option-btn" onclick="selectWeight(2.8, 10)">
+          <span class="weight-value">~2.8 кг</span>
+          <span class="weight-discount">-10%</span>
+          <span class="weight-price">${Math.round(priceLogic.calculate(currentProduct.price, 2.8) * 0.9)} ₽</span>
+        </button>
+        
+        <button class="weight-option-btn custom" onclick="showCustomInput()">
+          <span class="weight-value">✏️ Свой вариант</span>
+        </button>
+      </div>
+      
+      <div id="custom-weight-input" style="display: none; margin-top: 15px;">
+        <label for="weight-input">⚖️ Укажите вес (кг):</label>
+        <input 
+          type="number" 
+          id="weight-input" 
+          min="${priceLogic.minWeight}" 
+          max="${priceLogic.maxWeight}" 
+          step="${priceLogic.step}" 
+          placeholder="${priceLogic.placeholder}"
+          oninput="updateCustomPrice()">
+        <div id="weight-error" style="color: #ff5555; font-size: 12px; margin-top: 5px; display: none;"></div>
+      </div>
+      
+      <div id="total-price-block" style="display: none; margin-top: 15px;">
+        <div class="total-price">
+          Итого: <span id="total-price">0 ₽</span>
+        </div>
+      </div>
+    `;
+  }
   
   buyBtn.disabled = true;
   buyBtn.style.opacity = '0.5';
@@ -290,6 +351,8 @@ function showCustomInput() {
 function updateCustomPrice() {
   const input = document.getElementById("weight-input");
   const errorDiv = document.getElementById("weight-error");
+  const priceLogic = getPriceLogic(currentProduct.category);
+  
   let weight = parseFloat(input.value);
   
   // Убираем ошибку
@@ -304,8 +367,8 @@ function updateCustomPrice() {
   }
   
   // Проверка минимума
-  if (weight < 0.1) {
-    errorDiv.textContent = "⚠️ Минимальный вес: 0.1 кг (100г)";
+  if (weight < priceLogic.minWeight) {
+    errorDiv.textContent = `⚠️ Минимальный вес: ${priceLogic.minWeight} кг`;
     errorDiv.style.display = "block";
     document.getElementById("total-price-block").style.display = "none";
     buyBtn.disabled = true;
@@ -314,8 +377,8 @@ function updateCustomPrice() {
   }
   
   // Проверка максимума
-  if (weight > 50) {
-    errorDiv.textContent = "⚠️ Максимальный вес: 50 кг";
+  if (weight > priceLogic.maxWeight) {
+    errorDiv.textContent = `⚠️ Максимальный вес: ${priceLogic.maxWeight} кг`;
     errorDiv.style.display = "block";
     document.getElementById("total-price-block").style.display = "none";
     buyBtn.disabled = true;
@@ -340,9 +403,10 @@ function updateTotalPrice() {
   
   const priceBlock = document.getElementById("total-price-block");
   const totalPriceSpan = document.getElementById("total-price");
+  const priceLogic = getPriceLogic(currentProduct.category);
   
   // Расчёт с учётом скидки
-  const basePrice = currentProduct.price * selectedWeight;
+  const basePrice = priceLogic.calculate(currentProduct.price, selectedWeight);
   const discount = basePrice * (selectedDiscount / 100);
   const finalPrice = Math.round(basePrice - discount);
   
@@ -365,7 +429,8 @@ function addToCart() {
     return;
   }
   
-  const basePrice = currentProduct.price * selectedWeight;
+  const priceLogic = getPriceLogic(currentProduct.category);
+  const basePrice = priceLogic.calculate(currentProduct.price, selectedWeight);
   const discount = basePrice * (selectedDiscount / 100);
   const finalPrice = Math.round(basePrice - discount);
   
