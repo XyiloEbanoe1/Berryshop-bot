@@ -89,13 +89,43 @@ function displayProducts(items) {
     return;
   }
   
+  let currentCategory = "";
+  
   items.forEach(p => {
+    // Если категория изменилась - добавляем заголовок категории
+    if (p.category !== currentCategory) {
+      currentCategory = p.category;
+      
+      const categoryHeader = document.createElement("div");
+      categoryHeader.className = "category-header";
+      categoryHeader.style.gridColumn = "1 / -1";
+      categoryHeader.style.marginTop = "20px"; // Отступ сверху
+      categoryHeader.style.marginBottom = "10px"; // Отступ снизу
+      categoryHeader.style.paddingLeft = "10px";
+      categoryHeader.style.borderLeft = "4px solid #4CAF50"; // Зеленая полоска слева
+      
+      // Подбираем эмодзи для категории
+      let emoji = "📦";
+      if (p.category === "Варенье") emoji = "🍓";
+      if (p.category === "Мёд") emoji = "🍯";
+      if (p.category === "Чай") emoji = "🍵";
+      
+      categoryHeader.innerHTML = `
+        <h3 style="color: #4CAF50; font-size: 18px; font-weight: bold; margin: 0;">
+          ${emoji} ${p.category}
+        </h3>
+        <div style="color: #666; font-size: 12px; margin-top: 2px;">
+          ${getCategoryDescription(p.category)}
+        </div>
+      `;
+      productList.appendChild(categoryHeader);
+    }
+    
     const card = document.createElement("div");
     card.className = "product";
 
     const imgSrc = getImagePath(p);
     
-    // Цена за 100г (делим цену за кг на 10)
     const pricePer100g = Math.round(p.price / 10);
 
     card.innerHTML = `
@@ -105,12 +135,21 @@ function displayProducts(items) {
         <div class="product-rating">⭐ (0)</div>
         <h3>${p.name}</h3>
         <div class="product-price">${pricePer100g} ₽/100г</div>
-        <div class="product-location">${p.category}</div>
       </div>
     `;
     card.onclick = () => openProduct(p);
     productList.appendChild(card);
   });
+}
+
+// Функция для описания категорий
+function getCategoryDescription(category) {
+  const descriptions = {
+    "Варенье": "Натуральные ягодные варенья из северных лесов",
+    "Мёд": "Свежий мёд от местных пасечников", 
+    "Чай": "Ароматные травяные сборы"
+  };
+  return descriptions[category] || "Категория товаров";
 }
 
 function showAll() {
