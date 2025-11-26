@@ -579,3 +579,259 @@ if (window.Telegram?.WebApp) {
 console.log('🚀 Запуск приложения');
 showBigMessage('🚀 Запуск приложения');
 loadProducts();
+
+// ========================================
+// ДОБАВИТЬ ЭТИ ФУНКЦИИ В КОНЕЦ app.js
+// ========================================
+
+// Получаем данные пользователя из Telegram
+function getTelegramUser() {
+  if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+    return window.Telegram.WebApp.initDataUnsafe.user;
+  }
+  return { id: 123456, username: "test_user" }; // для тестов
+}
+
+// ========================================
+// ПОДДЕРЖКА
+// ========================================
+function openSupport() {
+  const supportModal = document.getElementById("support-modal");
+  supportModal.style.display = "block";
+  document.body.style.overflow = "hidden";
+  
+  // Загружаем историю сообщений
+  loadSupportHistory();
+}
+
+function closeSupportModal() {
+  const supportModal = document.getElementById("support-modal");
+  supportModal.style.display = "none";
+  document.body.style.overflow = "auto";
+}
+
+async function loadSupportHistory() {
+  const user = getTelegramUser();
+  const historyDiv = document.getElementById("support-history");
+  
+  try {
+    const response = await fetch(`/api/support/history?user_id=${user.id}`);
+    const data = await response.json();
+    
+    if (data.messages && data.messages.length > 0) {
+      historyDiv.innerHTML = "";
+      data.messages.forEach(msg => {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = msg.from_admin ? "support-msg admin" : "support-msg user";
+        msgDiv.innerHTML = `
+          <div class="support-msg-text">${msg.message}</div>
+          <div class="support-msg-time">${msg.timestamp}</div>
+        `;
+        historyDiv.appendChild(msgDiv);
+      });
+      
+      // Скроллим вниз
+      historyDiv.scrollTop = historyDiv.scrollHeight;
+    } else {
+      historyDiv.innerHTML = '<p style="color: #666; text-align: center;">История сообщений пуста</p>';
+    }
+  } catch (error) {
+    console.error("Ошибка загрузки истории:", error);
+    historyDiv.innerHTML = '<p style="color: #ff5555; text-align: center;">Ошибка загрузки</p>';
+  }
+}
+
+async function sendSupportMessage() {
+  const user = getTelegramUser();
+  const input = document.getElementById("support-input");
+  const message = input.value.trim();
+  
+  if (!message) {
+    showTelegramAlert("❌ Введите сообщение!");
+    return;
+  }
+  
+  try {
+    const response = await fetch("/api/support/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: user.id,
+        username: user.username || "неизвестен",
+        message: message
+      })
+    });
+    
+    if (response.ok) {
+      input.value = "";
+      showTelegramAlert("✅ Сообщение отправлено!");
+      loadSupportHistory();
+    } else {
+      showTelegramAlert("❌ Ошибка отправки");
+    }
+  } catch (error) {
+    console.error("Ошибка отправки:", error);
+    showTelegramAlert("❌ Ошибка отправки");
+  }
+}
+
+// ========================================
+// КОРЗИНА И ЗАКАЗЫ
+// ========================================
+async function openCart() {
+  setActiveFooterButton(1);
+  const items = Object.values(cart);
+  
+  if (items.length === 0) {
+    showTelegramAlert("Корзина пуста 🧺");
+    return;
+  }
+  
+  // Показываем модалку корзины
+  const cartModal = document.getElementById("cart-modal");
+  const cartItems = document.getElementById("cart-items");
+  const cartTotal = document.getElementById("cart-total");
+  
+  let totalSum = 0;
+  cartItems.innerHTML = "";
+  
+  items.forEach(item => {
+    const p = item.product;
+    const w = item.weight;
+    const price = item.totalPrice;
+    totalSum += price;
+    
+    const displayWeight = w >= 1 ? `${w} кг` : `${Math.round(w * 1000)} г`;
+    
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "cart-item";
+    itemDiv.innerHTML = `
+      <div>
+        <strong>${p.name}</strong><br>
+        <span style="color: #999;">${displayWeight}</span>
+        ${item.discount > 0 ? `<span style="color: #FF5722;"> (-${item.discount}%)</span>` : ''}
+      </div>
+      <div style="font-weight: bold; color: #4CAF50;">${price} ₽</div>
+    `;
+    cartItems.appendChild(itemDiv);
+  });
+  
+  cartTotal.textContent = `${totalSum} ₽`;
+  cartModal.style.display = "block";
+  document.body.style.overflow = "hidden";
+}
+
+function closeCartModal() {
+  const cartModal = document.getElementById("cart-modal");
+  cartModal.style.display = "none";
+  document.body.style.overflow = "auto";
+}
+
+async function checkoutOrder() {
+  const user = getTelegramUser();
+  const items = Object.values(cart);
+  
+  if (items.length === 0) {
+    showTelegramAlert("Корзина пуста!");
+    return;
+  }
+  
+  // Формируем данные заказа
+  const cartData = items.map(item => ({
+    name: item.product.name,
+    weight: item.weight,
+    price: item.totalPrice
+  }));
+  
+  const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
+  
+  try {
+    const response = await fetch("/api/order/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: user.id,
+        username: user.username || "неизвестен",
+        cart: cartData,
+        total_price: totalPrice
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      showTelegramAlert(`✅ Заказ #${data.order_id} оформлен!\nС вами свяжутся в ближайшее время.`);
+      
+      // Очищаем корзину
+      cart = {};
+      updateCartBadge();
+      closeCartModal();
+    } else {
+      showTelegramAlert("❌ Ошибка оформления заказа");
+    }
+  } catch (error) {
+    console.error("Ошибка оформления:", error);
+    showTelegramAlert("❌ Ошибка оформления заказа");
+  }
+}
+
+// ========================================
+// ПРОФИЛЬ
+// ========================================
+async function openProfile() {
+  const user = getTelegramUser();
+  const profileModal = document.getElementById("profile-modal");
+  
+  profileModal.style.display = "block";
+  document.body.style.overflow = "hidden";
+  
+  document.getElementById("profile-username").textContent = `@${user.username || "неизвестен"}`;
+  
+  const purchasesList = document.getElementById("purchases-list");
+  purchasesList.innerHTML = '<p style="color: #666; text-align: center;">⏳ Загрузка...</p>';
+  
+  try {
+    const response = await fetch(`/api/profile?user_id=${user.id}&username=${user.username || "неизвестен"}`);
+    const data = await response.json();
+    
+    if (data.purchases && data.purchases.length > 0) {
+      purchasesList.innerHTML = "";
+      
+      data.purchases.forEach(purchase => {
+        const purchaseDiv = document.createElement("div");
+        purchaseDiv.className = "purchase-item";
+        
+        let productsHtml = "";
+        purchase.products.forEach(p => {
+          productsHtml += `<div>• ${p.name} (${p.weight} кг)</div>`;
+        });
+        
+        purchaseDiv.innerHTML = `
+          <div class="purchase-date">${purchase.timestamp}</div>
+          <div class="purchase-products">${productsHtml}</div>
+          <div class="purchase-total">Сумма: ${purchase.total_price} ₽</div>
+        `;
+        
+        purchasesList.appendChild(purchaseDiv);
+      });
+    } else {
+      purchasesList.innerHTML = '<p style="color: #666; text-align: center;">У вас ещё нету покупок 📦</p>';
+    }
+  } catch (error) {
+    console.error("Ошибка загрузки профиля:", error);
+    purchasesList.innerHTML = '<p style="color: #ff5555; text-align: center;">Ошибка загрузки</p>';
+  }
+}
+
+function closeProfileModal() {
+  const profileModal = document.getElementById("profile-modal");
+  profileModal.style.display = "none";
+  document.body.style.overflow = "auto";
+}
+
+// ========================================
+// ОБНОВЛЯЕМ ФУНКЦИЮ openOrders
+// ========================================
+function openOrders() {
+  setActiveFooterButton(2);
+  openProfile(); // Теперь кнопка "Заказы" открывает профиль с историей
+}
