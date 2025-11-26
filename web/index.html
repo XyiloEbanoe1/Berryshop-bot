@@ -67,5 +67,80 @@
   </div>
 
   <script src="/web/app.js?v=5"></script>
+
+  <!-- Кнопка профиля (слева от футера) -->
+  <button class="profile-btn" onclick="openProfile()">👤</button>
+
+  <!-- Модалка поддержки -->
+  <div id="support-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">💬 Поддержка</h2>
+        <span class="close" onclick="closeSupportModal()">&times;</span>
+      </div>
+      
+      <div class="modal-body">
+        <div id="support-history" class="support-history">
+          <p style="color: #666; text-align: center;">⏳ Загрузка...</p>
+        </div>
+        
+        <div class="support-input-container">
+          <input 
+            type="text" 
+            id="support-input" 
+            placeholder="Напишите ваше сообщение..."
+            onkeypress="if(event.key==='Enter') sendSupportMessage()"
+          >
+          <button onclick="sendSupportMessage()">📤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка корзины -->
+  <div id="cart-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">🧺 Корзина</h2>
+        <span class="close" onclick="closeCartModal()">&times;</span>
+      </div>
+      
+      <div class="modal-body">
+        <div id="cart-items" class="cart-items-list">
+          <!-- Здесь будут товары -->
+        </div>
+        
+        <div class="cart-total-block">
+          <div class="cart-total-label">Итого:</div>
+          <div class="cart-total-price" id="cart-total">0 ₽</div>
+        </div>
+        
+        <button class="checkout-btn" onclick="checkoutOrder()">
+          ✅ Оформить заказ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка профиля -->
+  <div id="profile-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">👤 Профиль</h2>
+        <span class="close" onclick="closeProfileModal()">&times;</span>
+      </div>
+      
+      <div class="modal-body">
+        <div class="profile-username" id="profile-username">@username</div>
+        
+        <h3 style="color: #4CAF50; margin: 20px 0 10px 0;">📦 История покупок</h3>
+        
+        <div id="purchases-list" class="purchases-list">
+          <p style="color: #666; text-align: center;">⏳ Загрузка...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
