@@ -589,7 +589,7 @@ function getTelegramUser() {
   if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
     return window.Telegram.WebApp.initDataUnsafe.user;
   }
-  return { id: 123456, username: "test_user" }; // для тестов
+  return { id: 123456, username: "@test" }; // для тестов
 }
 
 // ========================================
