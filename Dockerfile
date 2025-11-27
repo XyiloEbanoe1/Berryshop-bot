@@ -1,20 +1,21 @@
-# Используем официальный Python образ
 FROM python:3.11-slim
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем файл зависимостей
-COPY requirements.txt .
+# Устанавливаем зависимости Linux (aiohttp без этого не работает)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libffi-dev \
+    libssl-dev
 
-# Устанавливаем зависимости
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt /app/
 
-# Копируем весь проект
-COPY . .
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-# Указываем порт
-EXPOSE 10000
+COPY . /app/
 
-# Запускаем приложение
+ENV PYTHONUNBUFFERED=1
+ENV PORT=10000
+
 CMD ["python", "main.py"]
